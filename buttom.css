@@ -1,0 +1,47 @@
+require('dotenv').config();
+const express = require('express');
+const bodyParser = require('body-parser');
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+
+const app = express();
+const port = 3000;
+
+// Configure body-parser
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Serve static files from the "public" directory
+app.use(express.static('public'));
+
+// Create a PostgreSQL connection pool
+const pool = new Pool({
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_DATABASE,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
+});
+
+// Handle form submission
+app.post('/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // Hash the password
+        const hash = await bcrypt.hash(password, 10);
+
+        // Insert the user into the database
+        const query = 'INSERT INTO users (username, password) VALUES ($1, $2)';
+        await pool.query(query, [username, hash]);
+
+        res.send('User logged in successfully');
+    } catch (err) {
+        console.error('Error saving data:', err);
+        res.status(500).send('Error saving data');
+    }
+});
+
+// Start the server
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}/`);
+});
